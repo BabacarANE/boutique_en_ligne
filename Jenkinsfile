@@ -9,7 +9,7 @@ pipeline {
 
     tools {
         maven 'M3'
-        jdk 'JDK17' // à activer après config Jenkins
+        jdk 'JDK17' // Décommenter après avoir configuré JDK dans Global Tool Configuration
     }
 
     parameters {
@@ -34,6 +34,7 @@ pipeline {
 
     stages {
 
+        // ── Stage 1 : Récupérer le code ──────────────
         stage('Checkout') {
             steps {
                 git branch: "${params.BRANCH}", url: 'https://github.com/BabacarANE/boutique_en_ligne.git'
@@ -41,12 +42,14 @@ pipeline {
             }
         }
 
+        // ── Stage 2 : Compiler ───────────────────────
         stage('Build') {
             steps {
                 sh 'mvn clean compile -B'
             }
         }
 
+        // ── Stage 3 : Tests unitaires ─────────────────
         stage('Tests unitaires') {
             when {
                 not { expression { params.SKIP_TESTS } }
@@ -58,9 +61,13 @@ pipeline {
                 always {
                     junit '**/target/surefire-reports/*.xml'
                 }
+                failure {
+                    echo 'Tests unitaires en ECHEC — vérifier les logs ci-dessus'
+                }
             }
         }
 
+        // ── Stage 4 : Tests d'intégration ────────────
         /*
         stage('Tests intégration') {
             when {
@@ -77,9 +84,11 @@ pipeline {
         }
         */
 
+        // ── Stage 5 : Couverture de code ─────────────
         stage('Couverture JaCoCo') {
             steps {
                 sh 'mvn jacoco:report -B'
+                // Rapport généré ici : target/site/jacoco/index.html
             }
 
             /*
@@ -96,13 +105,15 @@ pipeline {
             */
         }
 
+        // ── Stage 6 : Analyse qualité ─────────────────
         stage('Qualité') {
             steps {
                 sh '''
                     mvn checkstyle:checkstyle \
                         pmd:pmd \
                         pmd:cpd \
-                        spotbugs:spotbugs -B
+                        spotbugs:spotbugs \
+                        -B
                 '''
             }
 
@@ -128,6 +139,7 @@ pipeline {
             */
         }
 
+        // ── Stage 7 : Archiver le JAR ─────────────────
         stage('Archive') {
             steps {
                 archiveArtifacts(
@@ -135,9 +147,11 @@ pipeline {
                     fingerprint: true,
                     allowEmptyArchive: false
                 )
+                echo "Artefact archivé avec succès"
             }
         }
 
+        // ── Stage 8 : Validation PROD ─────────────────
         /*
         stage('Validation PROD') {
             when {
@@ -146,14 +160,17 @@ pipeline {
             steps {
                 timeout(time: 1, unit: 'HOURS') {
                     input(
-                        message: 'Déployer en PRODUCTION ?',
-                        ok: 'Oui, déployer',
-                        submitter: 'admin,tech-lead'
+                        message: "Déployer en PRODUCTION ?",
+                        ok: "Oui, déployer",
+                        submitter: "admin,tech-lead"
                     )
                 }
             }
         }
+        */
 
+        // ── Stage 9 : Déploiement ─────────────────────
+        /*
         stage('Deploy') {
             steps {
                 sh "./deploy.sh ${params.ENVIRONMENT}"
@@ -170,7 +187,7 @@ pipeline {
         }
 
         failure {
-            echo "❌ Build en ECHEC — vérifier logs"
+            echo "❌ Build en ECHEC — vérifier les logs"
         }
 
         success {
