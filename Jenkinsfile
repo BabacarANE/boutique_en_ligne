@@ -2,7 +2,7 @@
  * Jenkinsfile – Pipeline CI complète
  * Projet : Boutique en ligne – ICDE848
  */
-// test push for webhook
+// test push for webhook again
 pipeline {
 
     agent any
