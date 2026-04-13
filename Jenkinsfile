@@ -159,7 +159,7 @@ Consulter les logs : ${env.BUILD_URL}console
             emailext(
                 subject: "✅ FIXED: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
                 body:    "Le build est de nouveau stable : ${env.BUILD_URL}",
-                to:      'ton-email@gmail.com'
+                to:      'anebabacar221@gmail.com'
             )
         }
     }
