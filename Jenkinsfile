@@ -1,17 +1,17 @@
 /**
  * Jenkinsfile – Pipeline CI complète
  * Projet : Boutique en ligne – ICDE848
- *
- * Ce fichier doit être placé à la RACINE du dépôt Git.
- * Jenkins le détecte automatiquement lors de la création du job Pipeline.
  */
 
 pipeline {
 
-    // Exécuter sur n'importe quel agent disponible
     agent any
 
-    // PARAMÈTRES
+    tools {
+        maven 'M3'
+        jdk 'JDK17' ← Décommenter après avoir configuré JDK dans Global Tool Configuration
+    }
+
     parameters {
         string(
             name:         'BRANCH',
@@ -32,20 +32,22 @@ pipeline {
 
     stages {
 
+        // ── Stage 1 : Récupérer le code ──────────────
         stage('Checkout') {
             steps {
-                checkout scm
-                echo "Branch  : ${env.GIT_BRANCH}"
-                echo "Commit  : ${env.GIT_COMMIT}"
+                git branch: 'main', url: 'https://github.com/BabacarANE/boutique_en_ligne.git'
+                echo "Commit : ${env.GIT_COMMIT}"
             }
         }
 
+        // ── Stage 2 : Compiler ───────────────────────
         stage('Build') {
             steps {
                 sh 'mvn clean compile -B'
             }
         }
 
+        // ── Stage 3 : Tests unitaires ─────────────────
         stage('Tests unitaires') {
             when {
                 not { expression { return params.SKIP_TESTS } }
@@ -63,6 +65,9 @@ pipeline {
             }
         }
 
+        // ── Stage 4 : Tests d'intégration ────────────
+        // ⚠️ Décommenter si tu as des classes *IT.java dans src/test
+        /*
         stage('Tests intégration') {
             when {
                 not { expression { return params.SKIP_TESTS } }
@@ -76,23 +81,31 @@ pipeline {
                 }
             }
         }
+        */
 
+        // ── Stage 5 : Couverture de code ─────────────
         stage('Couverture JaCoCo') {
             steps {
                 sh 'mvn jacoco:report -B'
+                // Le rapport est généré dans target/site/jacoco/index.html
             }
+            // ⚠️ post commenté car plugin Jenkins "JaCoCo Plugin" non installé
+            // Pour l'activer : Administrer Jenkins → Plugins → Installer "JaCoCo Plugin"
+            /*
             post {
                 always {
                     jacoco(
-                        execPattern:   '**/target/jacoco.exec',
-                        classPattern:  '**/target/classes',
-                        sourcePattern: '**/src/main/java',
+                        execPattern:         '**/target/jacoco.exec',
+                        classPattern:        '**/target/classes',
+                        sourcePattern:       '**/src/main/java',
                         minimumLineCoverage: '70'
                     )
                 }
             }
+            */
         }
 
+        // ── Stage 6 : Analyse qualité ─────────────────
         stage('Qualité') {
             steps {
                 sh '''
@@ -103,6 +116,9 @@ pipeline {
                         -B
                 '''
             }
+            // ⚠️ post commenté car plugin "Warnings Next Generation" non installé
+            // Pour l'activer : Administrer Jenkins → Plugins → Installer "Warnings Next Generation Plugin"
+            /*
             post {
                 always {
                     recordIssues(
@@ -121,29 +137,60 @@ pipeline {
                     )
                 }
             }
+            */
         }
 
+        // ── Stage 7 : Archiver le JAR ─────────────────
         stage('Archive') {
             steps {
                 archiveArtifacts(
-                    artifacts:   '**/target/*.jar',
-                    fingerprint: true,
+                    artifacts:         '**/target/*.jar',
+                    fingerprint:       true,
                     allowEmptyArchive: false
                 )
                 echo "Artefact archivé avec succès"
             }
         }
 
+        // ── Stage 8 : Validation manuelle avant PROD ──
+        // ⚠️ Décommenter pour activer la validation manuelle (TP4)
+        /*
+        stage('Validation PROD') {
+            when { expression { return params.ENVIRONMENT == 'prod' } }
+            steps {
+                timeout(time: 1, unit: 'HOURS') {
+                    input(
+                        message:   "Déployer en PRODUCTION ?",
+                        ok:        "Oui, déployer",
+                        submitter: "admin,tech-lead"
+                    )
+                }
+            }
+        }
+        */
+
+        // ── Stage 9 : Déploiement ─────────────────────
+        // ⚠️ Décommenter et adapter selon votre environnement
+        /*
+        stage('Deploy') {
+            steps {
+                sh "./deploy.sh ${params.ENVIRONMENT}"
+            }
+        }
+        */
+
     }
 
     post {
+
         always {
             echo "Pipeline terminée — statut : ${currentBuild.currentResult}"
         }
 
-        // Désactivé temporairement car pas de serveur mail configuré
-        /*
         failure {
+            // ⚠️ Décommenter après avoir configuré le serveur SMTP dans Jenkins
+            // Administrer Jenkins → Configurer le système → Extended E-mail Notification
+            /*
             emailext(
                 subject: "❌ FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
                 body: """
@@ -151,23 +198,29 @@ Le build a échoué.
 
 Projet  : ${env.JOB_NAME}
 Build   : #${env.BUILD_NUMBER}
-Branche : ${env.GIT_BRANCH}
 URL     : ${env.BUILD_URL}
 
 Consulter les logs : ${env.BUILD_URL}console
                 """,
-                to:          'equipe-dev@monentreprise.fr',
-                attachLog:   true
+                to:        'ton-email@gmail.com',
+                attachLog: true
             )
+            */
+            echo "Build en ECHEC — configurer SMTP pour recevoir les emails"
         }
 
         fixed {
+            // ⚠️ Décommenter après configuration SMTP
+            /*
             emailext(
                 subject: "✅ FIXED: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
                 body:    "Le build est de nouveau stable : ${env.BUILD_URL}",
-                to:      'equipe-dev@monentreprise.fr'
+                to:      'ton-email@gmail.com'
             )
+            */
+            echo "Build de nouveau STABLE"
         }
-        */
+
     }
+
 }
