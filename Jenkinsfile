@@ -181,6 +181,12 @@ pipeline {
 
         success {
             echo "✅ Build réussi"
+            emailext(
+                subject: "✅ SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                body: "Le build est réussi : ${env.BUILD_URL}",
+                to: 'babacarane58@hotmail.com'
+            )
+
         }
 
         failure {
