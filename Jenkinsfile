@@ -9,48 +9,47 @@ pipeline {
 
     tools {
         maven 'M3'
-        jdk 'JDK17' ← Décommenter après avoir configuré JDK dans Global Tool Configuration
+        jdk 'JDK17' // à activer après config Jenkins
     }
 
     parameters {
         string(
-            name:         'BRANCH',
+            name: 'BRANCH',
             defaultValue: 'main',
-            description:  'Branche Git à builder'
+            description: 'Branche Git à builder'
         )
+
         choice(
-            name:    'ENVIRONMENT',
+            name: 'ENVIRONMENT',
             choices: ['dev', 'staging', 'prod'],
             description: 'Environnement de déploiement cible'
         )
+
         booleanParam(
-            name:         'SKIP_TESTS',
+            name: 'SKIP_TESTS',
             defaultValue: false,
-            description:  'Ignorer les tests (urgence uniquement !)'
+            description: 'Ignorer les tests (urgence uniquement !)'
         )
     }
 
     stages {
 
-        // ── Stage 1 : Récupérer le code ──────────────
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/BabacarANE/boutique_en_ligne.git'
+                git branch: "${params.BRANCH}", url: 'https://github.com/BabacarANE/boutique_en_ligne.git'
                 echo "Commit : ${env.GIT_COMMIT}"
             }
         }
 
-        // ── Stage 2 : Compiler ───────────────────────
         stage('Build') {
             steps {
                 sh 'mvn clean compile -B'
             }
         }
 
-        // ── Stage 3 : Tests unitaires ─────────────────
         stage('Tests unitaires') {
             when {
-                not { expression { return params.SKIP_TESTS } }
+                not { expression { params.SKIP_TESTS } }
             }
             steps {
                 sh 'mvn test -B'
@@ -59,18 +58,13 @@ pipeline {
                 always {
                     junit '**/target/surefire-reports/*.xml'
                 }
-                failure {
-                    echo 'Tests unitaires en ECHEC — vérifier les logs ci-dessus'
-                }
             }
         }
 
-        // ── Stage 4 : Tests d'intégration ────────────
-        // ⚠️ Décommenter si tu as des classes *IT.java dans src/test
         /*
         stage('Tests intégration') {
             when {
-                not { expression { return params.SKIP_TESTS } }
+                not { expression { params.SKIP_TESTS } }
             }
             steps {
                 sh 'mvn verify -Dsurefire.skip=true -B'
@@ -83,21 +77,18 @@ pipeline {
         }
         */
 
-        // ── Stage 5 : Couverture de code ─────────────
         stage('Couverture JaCoCo') {
             steps {
                 sh 'mvn jacoco:report -B'
-                // Le rapport est généré dans target/site/jacoco/index.html
             }
-            // ⚠️ post commenté car plugin Jenkins "JaCoCo Plugin" non installé
-            // Pour l'activer : Administrer Jenkins → Plugins → Installer "JaCoCo Plugin"
+
             /*
             post {
                 always {
                     jacoco(
-                        execPattern:         '**/target/jacoco.exec',
-                        classPattern:        '**/target/classes',
-                        sourcePattern:       '**/src/main/java',
+                        execPattern: '**/target/jacoco.exec',
+                        classPattern: '**/target/classes',
+                        sourcePattern: '**/src/main/java',
                         minimumLineCoverage: '70'
                     )
                 }
@@ -105,19 +96,16 @@ pipeline {
             */
         }
 
-        // ── Stage 6 : Analyse qualité ─────────────────
         stage('Qualité') {
             steps {
                 sh '''
                     mvn checkstyle:checkstyle \
                         pmd:pmd \
                         pmd:cpd \
-                        spotbugs:spotbugs \
-                        -B
+                        spotbugs:spotbugs -B
                 '''
             }
-            // ⚠️ post commenté car plugin "Warnings Next Generation" non installé
-            // Pour l'activer : Administrer Jenkins → Plugins → Installer "Warnings Next Generation Plugin"
+
             /*
             post {
                 always {
@@ -125,9 +113,9 @@ pipeline {
                         enabledForFailure: true,
                         tools: [
                             checkStyle(pattern: '**/checkstyle-result.xml'),
-                            pmdParser(pattern:  '**/pmd.xml'),
-                            cpd(pattern:        '**/cpd.xml'),
-                            spotBugs(pattern:   '**/spotbugsXml.xml')
+                            pmdParser(pattern: '**/pmd.xml'),
+                            cpd(pattern: '**/cpd.xml'),
+                            spotBugs(pattern: '**/spotbugsXml.xml')
                         ],
                         qualityGates: [[
                             threshold: 10,
@@ -140,38 +128,32 @@ pipeline {
             */
         }
 
-        // ── Stage 7 : Archiver le JAR ─────────────────
         stage('Archive') {
             steps {
                 archiveArtifacts(
-                    artifacts:         '**/target/*.jar',
-                    fingerprint:       true,
+                    artifacts: '**/target/*.jar',
+                    fingerprint: true,
                     allowEmptyArchive: false
                 )
-                echo "Artefact archivé avec succès"
             }
         }
 
-        // ── Stage 8 : Validation manuelle avant PROD ──
-        // ⚠️ Décommenter pour activer la validation manuelle (TP4)
         /*
         stage('Validation PROD') {
-            when { expression { return params.ENVIRONMENT == 'prod' } }
+            when {
+                expression { params.ENVIRONMENT == 'prod' }
+            }
             steps {
                 timeout(time: 1, unit: 'HOURS') {
                     input(
-                        message:   "Déployer en PRODUCTION ?",
-                        ok:        "Oui, déployer",
-                        submitter: "admin,tech-lead"
+                        message: 'Déployer en PRODUCTION ?',
+                        ok: 'Oui, déployer',
+                        submitter: 'admin,tech-lead'
                     )
                 }
             }
         }
-        */
 
-        // ── Stage 9 : Déploiement ─────────────────────
-        // ⚠️ Décommenter et adapter selon votre environnement
-        /*
         stage('Deploy') {
             steps {
                 sh "./deploy.sh ${params.ENVIRONMENT}"
@@ -188,39 +170,34 @@ pipeline {
         }
 
         failure {
-            // ⚠️ Décommenter après avoir configuré le serveur SMTP dans Jenkins
-            // Administrer Jenkins → Configurer le système → Extended E-mail Notification
-            /*
+            echo "❌ Build en ECHEC — vérifier logs"
+        }
+
+        success {
+            echo "✅ Build réussi"
+        }
+
+        /*
+        failure {
             emailext(
                 subject: "❌ FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
                 body: """
-Le build a échoué.
-
 Projet  : ${env.JOB_NAME}
 Build   : #${env.BUILD_NUMBER}
 URL     : ${env.BUILD_URL}
-
-Consulter les logs : ${env.BUILD_URL}console
                 """,
-                to:        'ton-email@gmail.com',
+                to: 'ton-email@gmail.com',
                 attachLog: true
             )
-            */
-            echo "Build en ECHEC — configurer SMTP pour recevoir les emails"
         }
 
         fixed {
-            // ⚠️ Décommenter après configuration SMTP
-            /*
             emailext(
                 subject: "✅ FIXED: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                body:    "Le build est de nouveau stable : ${env.BUILD_URL}",
-                to:      'ton-email@gmail.com'
+                body: "Build restauré : ${env.BUILD_URL}",
+                to: 'ton-email@gmail.com'
             )
-            */
-            echo "Build de nouveau STABLE"
         }
-
+        */
     }
-
 }
