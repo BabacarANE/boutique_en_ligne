@@ -187,27 +187,27 @@ pipeline {
             echo "❌ Build en ECHEC — vérifier les logs"
             // ⚠️ Décommenter après configuration SMTP dans Jenkins
             // Administrer Jenkins → Configurer le système → Extended E-mail Notification
-            // emailext(
-            //     subject: "❌ FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-            //     body: """
-            // Projet  : ${env.JOB_NAME}
-            // Build   : #${env.BUILD_NUMBER}
-            // URL     : ${env.BUILD_URL}
-            // Logs    : ${env.BUILD_URL}console
-            //     """,
-            //     to:        'ton-email@gmail.com',
-            //     attachLog: true
-            // )
+             emailext(
+                 subject: "❌ FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                 body: """
+                    Projet  : ${env.JOB_NAME}
+                    Build   : #${env.BUILD_NUMBER}
+                    URL     : ${env.BUILD_URL}
+                    Logs    : ${env.BUILD_URL}console
+                 """,
+                 to:        'babacarane58@hotmail.com',
+                 attachLog: true
+             )
         }
 
         fixed {
             echo "🔧 Build de nouveau STABLE"
             // ⚠️ Décommenter après configuration SMTP
-            // emailext(
-            //     subject: "✅ FIXED: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-            //     body:    "Le build est de nouveau stable : ${env.BUILD_URL}",
-            //     to:      'ton-email@gmail.com'
-            // )
+            emailext(
+                subject: "✅ FIXED: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                body:    "Le build est de nouveau stable : ${env.BUILD_URL}",
+                to:      'ton-email@gmail.com'
+             )
         }
 
     }
