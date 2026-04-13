@@ -43,7 +43,7 @@ pipeline {
         // ── Stage 2 : Compiler ───────────────────────
         stage('Build') {
             steps {
-                sh 'mvn clean compile -B'
+                sh 'mvn clean package -B -DskipTests'
             }
         }
 
