@@ -9,26 +9,24 @@ pipeline {
 
     tools {
         maven 'M3'
-        jdk 'JDK17' // Décommenter après avoir configuré JDK dans Global Tool Configuration
+        jdk 'JDK17'
     }
 
     parameters {
         string(
-            name: 'BRANCH',
+            name:         'BRANCH',
             defaultValue: 'main',
-            description: 'Branche Git à builder'
+            description:  'Branche Git à builder'
         )
-
         choice(
-            name: 'ENVIRONMENT',
+            name:    'ENVIRONMENT',
             choices: ['dev', 'staging', 'prod'],
             description: 'Environnement de déploiement cible'
         )
-
         booleanParam(
-            name: 'SKIP_TESTS',
+            name:         'SKIP_TESTS',
             defaultValue: false,
-            description: 'Ignorer les tests (urgence uniquement !)'
+            description:  'Ignorer les tests (urgence uniquement !)'
         )
     }
 
@@ -52,7 +50,7 @@ pipeline {
         // ── Stage 3 : Tests unitaires ─────────────────
         stage('Tests unitaires') {
             when {
-                not { expression { params.SKIP_TESTS } }
+                not { expression { return params.SKIP_TESTS } }
             }
             steps {
                 sh 'mvn test -B'
@@ -68,41 +66,39 @@ pipeline {
         }
 
         // ── Stage 4 : Tests d'intégration ────────────
-        /*
-        stage('Tests intégration') {
-            when {
-                not { expression { params.SKIP_TESTS } }
-            }
-            steps {
-                sh 'mvn verify -Dsurefire.skip=true -B'
-            }
-            post {
-                always {
-                    junit '**/target/failsafe-reports/*.xml'
-                }
-            }
-        }
-        */
+        // ⚠️ Décommenter si tu as des classes *IT.java dans src/test
+        // stage('Tests intégration') {
+        //     when {
+        //         not { expression { return params.SKIP_TESTS } }
+        //     }
+        //     steps {
+        //         sh 'mvn verify -Dsurefire.skip=true -B'
+        //     }
+        //     post {
+        //         always {
+        //             junit '**/target/failsafe-reports/*.xml'
+        //         }
+        //     }
+        // }
 
         // ── Stage 5 : Couverture de code ─────────────
         stage('Couverture JaCoCo') {
             steps {
                 sh 'mvn jacoco:report -B'
-                // Rapport généré ici : target/site/jacoco/index.html
+                // Rapport généré dans : target/site/jacoco/index.html
             }
-
-            /*
-            post {
-                always {
-                    jacoco(
-                        execPattern: '**/target/jacoco.exec',
-                        classPattern: '**/target/classes',
-                        sourcePattern: '**/src/main/java',
-                        minimumLineCoverage: '70'
-                    )
-                }
-            }
-            */
+            // ⚠️ Décommenter après installation du plugin "JaCoCo Plugin"
+            // Administrer Jenkins → Plugins → Disponibles → "JaCoCo Plugin"
+            // post {
+            //     always {
+            //         jacoco(
+            //             execPattern:         'target/jacoco.exec',
+            //             classPattern:        'target/classes',
+            //             sourcePattern:       'src/main/java',
+            //             minimumLineCoverage: '70'
+            //         )
+            //     }
+            // }
         }
 
         // ── Stage 6 : Analyse qualité ─────────────────
@@ -116,67 +112,64 @@ pipeline {
                         -B
                 '''
             }
-
-            /*
-            post {
-                always {
-                    recordIssues(
-                        enabledForFailure: true,
-                        tools: [
-                            checkStyle(pattern: '**/checkstyle-result.xml'),
-                            pmdParser(pattern: '**/pmd.xml'),
-                            cpd(pattern: '**/cpd.xml'),
-                            spotBugs(pattern: '**/spotbugsXml.xml')
-                        ],
-                        qualityGates: [[
-                            threshold: 10,
-                            type: 'TOTAL',
-                            unstable: true
-                        ]]
-                    )
-                }
-            }
-            */
+            // ⚠️ Décommenter après installation du plugin "Warnings Next Generation Plugin"
+            // Administrer Jenkins → Plugins → Disponibles → "Warnings Next Generation Plugin"
+            // post {
+            //     always {
+            //         recordIssues(
+            //             enabledForFailure: true,
+            //             tools: [
+            //                 checkStyle(pattern: 'target/checkstyle-result.xml'),
+            //                 pmdParser(pattern:  'target/pmd.xml'),
+            //                 cpd(pattern:        'target/cpd.xml'),
+            //                 spotBugs(pattern:   'target/spotbugsXml.xml')
+            //             ],
+            //             qualityGates: [[
+            //                 threshold: 10,
+            //                 type: 'TOTAL',
+            //                 unstable: true
+            //             ]]
+            //         )
+            //     }
+            // }
         }
 
         // ── Stage 7 : Archiver le JAR ─────────────────
         stage('Archive') {
             steps {
                 archiveArtifacts(
-                    artifacts: '**/target/*.jar',
-                    fingerprint: true,
+                    artifacts:         '**/target/*.jar',
+                    fingerprint:       true,
                     allowEmptyArchive: false
                 )
                 echo "Artefact archivé avec succès"
             }
         }
 
-        // ── Stage 8 : Validation PROD ─────────────────
-        /*
-        stage('Validation PROD') {
-            when {
-                expression { params.ENVIRONMENT == 'prod' }
-            }
-            steps {
-                timeout(time: 1, unit: 'HOURS') {
-                    input(
-                        message: "Déployer en PRODUCTION ?",
-                        ok: "Oui, déployer",
-                        submitter: "admin,tech-lead"
-                    )
-                }
-            }
-        }
-        */
+        // ── Stage 8 : Validation manuelle avant PROD ──
+        // ⚠️ Décommenter pour activer la validation manuelle avant déploiement PROD
+        // stage('Validation PROD') {
+        //     when {
+        //         expression { return params.ENVIRONMENT == 'prod' }
+        //     }
+        //     steps {
+        //         timeout(time: 1, unit: 'HOURS') {
+        //             input(
+        //                 message:   'Déployer en PRODUCTION ?',
+        //                 ok:        'Oui, déployer',
+        //                 submitter: 'admin,tech-lead'
+        //             )
+        //         }
+        //     }
+        // }
 
         // ── Stage 9 : Déploiement ─────────────────────
-        /*
-        stage('Deploy') {
-            steps {
-                sh "./deploy.sh ${params.ENVIRONMENT}"
-            }
-        }
-        */
+        // ⚠️ Décommenter et adapter selon votre environnement
+        // stage('Deploy') {
+        //     steps {
+        //         sh "./deploy.sh ${params.ENVIRONMENT}"
+        //     }
+        // }
 
     }
 
@@ -186,35 +179,37 @@ pipeline {
             echo "Pipeline terminée — statut : ${currentBuild.currentResult}"
         }
 
-        failure {
-            echo "❌ Build en ECHEC — vérifier les logs"
-        }
-
         success {
             echo "✅ Build réussi"
         }
 
-        /*
         failure {
-            emailext(
-                subject: "❌ FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                body: """
-Projet  : ${env.JOB_NAME}
-Build   : #${env.BUILD_NUMBER}
-URL     : ${env.BUILD_URL}
-                """,
-                to: 'ton-email@gmail.com',
-                attachLog: true
-            )
+            echo "❌ Build en ECHEC — vérifier les logs"
+            // ⚠️ Décommenter après configuration SMTP dans Jenkins
+            // Administrer Jenkins → Configurer le système → Extended E-mail Notification
+            // emailext(
+            //     subject: "❌ FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+            //     body: """
+            // Projet  : ${env.JOB_NAME}
+            // Build   : #${env.BUILD_NUMBER}
+            // URL     : ${env.BUILD_URL}
+            // Logs    : ${env.BUILD_URL}console
+            //     """,
+            //     to:        'ton-email@gmail.com',
+            //     attachLog: true
+            // )
         }
 
         fixed {
-            emailext(
-                subject: "✅ FIXED: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                body: "Build restauré : ${env.BUILD_URL}",
-                to: 'ton-email@gmail.com'
-            )
+            echo "🔧 Build de nouveau STABLE"
+            // ⚠️ Décommenter après configuration SMTP
+            // emailext(
+            //     subject: "✅ FIXED: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+            //     body:    "Le build est de nouveau stable : ${env.BUILD_URL}",
+            //     to:      'ton-email@gmail.com'
+            // )
         }
-        */
+
     }
+
 }
