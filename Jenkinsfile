@@ -96,7 +96,7 @@ pipeline {
                 echo "Artefact archivé avec succès"
             }
         }
-
+// ── SRANDRIANTSEHENO Fara
         // ── Stage 7 : Déclenchement du CD (job chaîné) ──
         stage('Trigger CD Pipeline') {
             steps {
@@ -159,4 +159,4 @@ Logs    : ${env.BUILD_URL}console
         }
     }
 }
-// fara randriantseheno
+// fara randriantsehenoclear
